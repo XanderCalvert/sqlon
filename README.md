@@ -138,7 +138,7 @@ This is an experimental project. Breaking changes are expected. The current MVP 
 
 ## License
 
-[Add your license here]
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
