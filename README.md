@@ -122,6 +122,10 @@ sqlon/
 
 See [SPEC.md](SPEC.md) for the complete specification and [MANIFESTO.md](MANIFESTO.md) for the project philosophy.
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for detailed implementation status and planned features.
+
 ## Status
 
 This is an experimental project. Breaking changes are expected. The current MVP supports:
