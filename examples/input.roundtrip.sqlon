@@ -1,0 +1,60 @@
+@table settings_color_gradients
+@cols gradient:text,name:text,slug:text
+["linear-gradient(0deg, #e1236c 0%, #02285b 100%)","Primary to Secondary","primary-secondary"]
+
+@table settings_color_palette
+@cols slug:text,name:text,color:text
+["primary","Primary","#02285b"]
+["secondary","Secondary","#e1236c"]
+["tertiary","Tertiary","#ffa500"]
+["black","Black","#000"]
+["white","White","#fff"]
+["grey","grey","#eee"]
+
+@table settings_color_duotone
+@cols name:text,slug:text,colors:text
+["Primary and White","primary-and-white","[\"#02285b\",\"#ffffff\"]"]
+
+@table settings_spacing_units
+@cols value:text
+["%"]
+["px"]
+["em"]
+["rem"]
+["vh"]
+["vw"]
+
+@table settings_spacing_spacingSizes
+@cols slug:text,name:text,size:text
+["filter-xs","Extra small","0.5rem"]
+["filter-sm","Small","1rem"]
+["filter-md","Medium","clamp(1rem, 0.825rem + 0.675vw, 1.5rem)"]
+["filter-lg","Large","clamp(1.5rem, 1.325rem + 0.675vw, 2rem)"]
+["filter-xl","X-Large","clamp(1.5rem, 1.151rem + 1.349vw, 2.5rem)"]
+["filter-xxl","XXL","clamp(2rem, 1.476rem + 2.024vw, 3.5rem)"]
+["filter-huge","Huge","clamp(2rem, 0.953rem + 4.047vw, 5rem)"]
+
+@table templateParts
+@cols area:text,name:text,title:text
+["footer","cpt-post","News Post - Footer"]
+
+@table settings_shadow_presets
+@cols name:text,shadow:text,slug:text
+["Faint","0 2px 4px rgb(10, 10, 10, 0.1)","faint"]
+["Light","0 0 10px rgb(10, 10, 10, 0.1)","light"]
+["Solid","6px 6px 0 currentColor","solid"]
+
+@table settings_typography_fontFamilies
+@cols fontFace:text,fontFamily:text,name:text,slug:text
+["[{\"fontFamily\":\"Arial\",\"fontStyle\":\"normal\",\"fontWeight\":\"400\",\"src\":[]},{\"fontFamily\":\"Arial\",\"fontStyle\":\"italic\",\"fontWeight\":\"400\",\"src\":[]}]","Arial","Arial","arial-font"]
+[null,"Times","Times","times-font"]
+
+@table settings_typography_fontSizes
+@cols size:text,slug:text,name:text
+["12px","filter-xs","Extra small"]
+["16px","filter-sm","Small"]
+["20px","filter-base","Base"]
+["24px","filter-md","Medium"]
+["32px","filter-lg","Large"]
+["48px","filter-xl","X-Large"]
+["64px","filter-xxl","XXL"]

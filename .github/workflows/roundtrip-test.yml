@@ -1,0 +1,61 @@
+name: Roundtrip Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Build
+      run: go build ./cmd/sqlon
+    
+    - name: Run roundtrip
+      run: |
+        ./sqlon roundtrip examples/input.json
+    
+    - name: Compare generated files with examples
+      run: |
+        echo "Comparing generated files with committed examples..."
+        
+        # Compare SQLON output
+        if ! diff -u examples/input.sqlon out/01.sqlon; then
+          echo "❌ input.sqlon differs from generated output"
+          exit 1
+        fi
+        echo "✅ input.sqlon matches"
+        
+        # Compare SQL output
+        if ! diff -u examples/input.sqlite.sql out/02.sqlite.sql; then
+          echo "❌ input.sqlite.sql differs from generated output"
+          exit 1
+        fi
+        echo "✅ input.sqlite.sql matches"
+        
+        # Compare roundtrip SQLON
+        if ! diff -u examples/input.roundtrip.sqlon out/03.roundtrip.sqlon; then
+          echo "❌ input.roundtrip.sqlon differs from generated output"
+          exit 1
+        fi
+        echo "✅ input.roundtrip.sqlon matches"
+        
+        # Compare JSON output
+        if ! diff -u examples/input.out.json out/04.json.out.json; then
+          echo "❌ input.out.json differs from generated output"
+          exit 1
+        fi
+        echo "✅ input.out.json matches"
+        
+        echo "✅ All files match - roundtrip test passed!"
+

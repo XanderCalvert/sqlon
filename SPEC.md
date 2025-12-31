@@ -1,19 +1,50 @@
-# SQLON – SQL Object Notation
+# SQLON — SQL Object Notation
 
-SQLON is a strict, SQL-shaped interchange format designed to normalise
-semi-structured data into relational tables.
+SQLON (SQL Object Notation) is a strict, SQL-shaped interchange format designed to
+represent structured data in a relational form.
 
-## Phase 1 Scope
+SQLON acts as a **canonical internal representation** that can be compiled into
+real SQL and converted to and from formats such as JSON, CSV, and XML.
 
-Supported:
-- Multiple tables per file
-- @table <name>
-- @cols <name:type,...>
-- @pk <column>
-- Positional rows: [1,"Matt",true]
+Unlike schema-less formats, SQLON is intentionally explicit and opinionated.
 
-Not supported (yet):
-- Foreign keys
-- Nested structures
-- JSON / CSV / XML import
-- Validation beyond parsing
+---
+
+## Design Principles
+
+- **Relational-first**  
+  SQLON mirrors relational database concepts directly.
+
+- **Strict, not permissive**  
+  Ambiguous or malformed input must fail early.
+
+- **Deterministic**  
+  Identical input always produces identical output.
+
+- **Readable and diff-friendly**  
+  SQLON files are designed to be human-readable and version-control friendly.
+
+- **Canonical representation**  
+  SQLON is the internal normalised form; other formats are imported/exported.
+
+---
+
+## File Structure
+
+A SQLON file may contain **one or more tables**, defined sequentially.
+
+Each table consists of:
+1. A table declaration
+2. Column definitions
+3. Optional constraints
+4. Zero or more data rows
+
+Example:
+
+```sqlon
+@table people
+@cols id:int, name:text, active:bool
+@pk id
+
+[1,"Matt",true]
+[2,"Calvert",false]

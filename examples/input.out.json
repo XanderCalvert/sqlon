@@ -1,0 +1,180 @@
+{
+    "settings_color_duotone": [
+        {
+            "colors": "[\"#02285b\",\"#ffffff\"]",
+            "name": "Primary and White",
+            "slug": "primary-and-white"
+        }
+    ],
+    "settings_color_gradients": [
+        {
+            "gradient": "linear-gradient(0deg, #e1236c 0%, #02285b 100%)",
+            "name": "Primary to Secondary",
+            "slug": "primary-secondary"
+        }
+    ],
+    "settings_color_palette": [
+        {
+            "color": "#02285b",
+            "name": "Primary",
+            "slug": "primary"
+        },
+        {
+            "color": "#e1236c",
+            "name": "Secondary",
+            "slug": "secondary"
+        },
+        {
+            "color": "#ffa500",
+            "name": "Tertiary",
+            "slug": "tertiary"
+        },
+        {
+            "color": "#000",
+            "name": "Black",
+            "slug": "black"
+        },
+        {
+            "color": "#fff",
+            "name": "White",
+            "slug": "white"
+        },
+        {
+            "color": "#eee",
+            "name": "grey",
+            "slug": "grey"
+        }
+    ],
+    "settings_shadow_presets": [
+        {
+            "name": "Faint",
+            "shadow": "0 2px 4px rgb(10, 10, 10, 0.1)",
+            "slug": "faint"
+        },
+        {
+            "name": "Light",
+            "shadow": "0 0 10px rgb(10, 10, 10, 0.1)",
+            "slug": "light"
+        },
+        {
+            "name": "Solid",
+            "shadow": "6px 6px 0 currentColor",
+            "slug": "solid"
+        }
+    ],
+    "settings_spacing_spacingSizes": [
+        {
+            "name": "Extra small",
+            "size": "0.5rem",
+            "slug": "filter-xs"
+        },
+        {
+            "name": "Small",
+            "size": "1rem",
+            "slug": "filter-sm"
+        },
+        {
+            "name": "Medium",
+            "size": "clamp(1rem, 0.825rem + 0.675vw, 1.5rem)",
+            "slug": "filter-md"
+        },
+        {
+            "name": "Large",
+            "size": "clamp(1.5rem, 1.325rem + 0.675vw, 2rem)",
+            "slug": "filter-lg"
+        },
+        {
+            "name": "X-Large",
+            "size": "clamp(1.5rem, 1.151rem + 1.349vw, 2.5rem)",
+            "slug": "filter-xl"
+        },
+        {
+            "name": "XXL",
+            "size": "clamp(2rem, 1.476rem + 2.024vw, 3.5rem)",
+            "slug": "filter-xxl"
+        },
+        {
+            "name": "Huge",
+            "size": "clamp(2rem, 0.953rem + 4.047vw, 5rem)",
+            "slug": "filter-huge"
+        }
+    ],
+    "settings_spacing_units": [
+        {
+            "value": "%"
+        },
+        {
+            "value": "px"
+        },
+        {
+            "value": "em"
+        },
+        {
+            "value": "rem"
+        },
+        {
+            "value": "vh"
+        },
+        {
+            "value": "vw"
+        }
+    ],
+    "settings_typography_fontFamilies": [
+        {
+            "fontFace": "[{\"fontFamily\":\"Arial\",\"fontStyle\":\"normal\",\"fontWeight\":\"400\",\"src\":[]},{\"fontFamily\":\"Arial\",\"fontStyle\":\"italic\",\"fontWeight\":\"400\",\"src\":[]}]",
+            "fontFamily": "Arial",
+            "name": "Arial",
+            "slug": "arial-font"
+        },
+        {
+            "fontFace": null,
+            "fontFamily": "Times",
+            "name": "Times",
+            "slug": "times-font"
+        }
+    ],
+    "settings_typography_fontSizes": [
+        {
+            "name": "Extra small",
+            "size": "12px",
+            "slug": "filter-xs"
+        },
+        {
+            "name": "Small",
+            "size": "16px",
+            "slug": "filter-sm"
+        },
+        {
+            "name": "Base",
+            "size": "20px",
+            "slug": "filter-base"
+        },
+        {
+            "name": "Medium",
+            "size": "24px",
+            "slug": "filter-md"
+        },
+        {
+            "name": "Large",
+            "size": "32px",
+            "slug": "filter-lg"
+        },
+        {
+            "name": "X-Large",
+            "size": "48px",
+            "slug": "filter-xl"
+        },
+        {
+            "name": "XXL",
+            "size": "64px",
+            "slug": "filter-xxl"
+        }
+    ],
+    "templateParts": [
+        {
+            "area": "footer",
+            "name": "cpt-post",
+            "title": "News Post - Footer"
+        }
+    ]
+}
