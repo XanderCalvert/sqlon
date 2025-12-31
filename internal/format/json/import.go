@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 
 	"sqlon/internal/model"
@@ -26,9 +27,22 @@ func Import(r io.Reader) (*model.Database, error) {
 		return nil, err
 	}
 
-	// Convert map to slice
+	// Convert map to slice and sort by table name for deterministic output
 	db.Tables = make([]*model.Table, 0, len(normalizer.tables))
-	for _, table := range normalizer.tables {
+	tableNames := make([]string, 0, len(normalizer.tables))
+	for name := range normalizer.tables {
+		tableNames = append(tableNames, name)
+	}
+
+	// Sort table names for deterministic order
+	sort.Strings(tableNames)
+
+	for _, name := range tableNames {
+		table := normalizer.tables[name]
+		// Sort columns by name for deterministic order
+		sort.Slice(table.Columns, func(i, j int) bool {
+			return table.Columns[i].Name < table.Columns[j].Name
+		})
 		db.Tables = append(db.Tables, table)
 	}
 
@@ -147,16 +161,12 @@ func (n *normalizer) createTableFromArray(tableName string, arr []interface{}) e
 func (n *normalizer) inferColumns(obj map[string]interface{}) []model.Column {
 	columns := make([]model.Column, 0, len(obj))
 
-	// Use a map to preserve order while avoiding duplicates
-	seen := make(map[string]bool)
+	// Collect all keys and sort for deterministic order
 	keys := make([]string, 0, len(obj))
-
 	for key := range obj {
-		if !seen[key] {
-			seen[key] = true
-			keys = append(keys, key)
-		}
+		keys = append(keys, key)
 	}
+	sort.Strings(keys)
 
 	for _, key := range keys {
 		val := obj[key]
