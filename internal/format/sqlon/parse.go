@@ -87,7 +87,36 @@ func Parse(r io.Reader) (*model.Database, error) {
 		return nil, err
 	}
 
+	// Infer foreign keys from column names (e.g., "parentTable_id" -> FK to "parentTable")
+	inferForeignKeys(db)
+
 	return db, nil
+}
+
+func inferForeignKeys(db *model.Database) {
+	// Build table name map
+	tableMap := make(map[string]*model.Table)
+	for _, table := range db.Tables {
+		tableMap[table.Name] = table
+	}
+
+	// For each table, check if any columns look like foreign keys
+	for _, table := range db.Tables {
+		for _, col := range table.Columns {
+			// Check if column name ends with "_id" and matches a table name
+			if strings.HasSuffix(col.Name, "_id") {
+				potentialTableName := strings.TrimSuffix(col.Name, "_id")
+				if _, exists := tableMap[potentialTableName]; exists {
+					// This looks like a foreign key
+					table.ForeignKeys = append(table.ForeignKeys, model.ForeignKey{
+						Name:             col.Name,
+						ReferencedTable:  potentialTableName,
+						ReferencedColumn: "id", // Default assumption
+					})
+				}
+			}
+		}
+	}
 }
 
 func parseCols(spec string) ([]model.Column, error) {

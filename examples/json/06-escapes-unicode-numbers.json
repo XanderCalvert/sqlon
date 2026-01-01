@@ -1,0 +1,26 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/theme.json",
+    "version": 2,
+    "customTemplates": [],
+    "settings": {
+        "appearanceTools": true,
+        "meta": {
+            "description": "Quotes: \"hello\". Newline:\nTab:\tBackslash:\\",
+            "unicode": "Seahorse: 🐴🌊  —  Emoji + dash — café",
+            "bigIntLike": 9007199254740993,
+            "floaty": 0.30000000000000004
+        },
+        "color": {
+            "duotone": [
+                {
+                    "name": "Brand \"Special\"",
+                    "slug": "brand-special",
+                    "colors": [
+                        "#02285b",
+                        "#ffffff"
+                    ]
+                }
+            ]
+        }
+    }
+}

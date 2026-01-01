@@ -1,0 +1,22 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/theme.json",
+    "version": 2,
+    "customTemplates": [],
+    "settings": {
+        "appearanceTools": true,
+        "border": {
+            "color": false,
+            "radius": false,
+            "style": false,
+            "width": false
+        },
+        "background": {
+            "backgroundImage": false,
+            "backgroundSize": false
+        },
+        "color": {
+            "background": false,
+            "custom": false
+        }
+    }
+}

@@ -1,0 +1,20 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/theme.json",
+    "version": 2,
+    "customTemplates": [],
+    "settings": {
+        "appearanceTools": true,
+        "color": {
+            "duotone": [
+                {
+                    "name": "Brand",
+                    "slug": "brand",
+                    "colors": [
+                        "#02285b",
+                        "#ffffff"
+                    ]
+                }
+            ]
+        }
+    }
+}

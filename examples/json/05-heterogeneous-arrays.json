@@ -1,0 +1,31 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/theme.json",
+    "version": 2,
+    "customTemplates": [],
+    "settings": {
+        "color": {
+            "duotone": [
+                {
+                    "name": "Brand",
+                    "slug": "brand",
+                    "colors": [
+                        "#02285b",
+                        "#ffffff"
+                    ]
+                },
+                "this-should-not-be-here",
+                123,
+                null,
+                {
+                    "name": "Extra",
+                    "slug": "extra",
+                    "colors": [
+                        "#111111",
+                        "#eeeeee",
+                        999
+                    ]
+                }
+            ]
+        }
+    }
+}

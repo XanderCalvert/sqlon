@@ -1,0 +1,46 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/theme.json",
+    "version": 2,
+    "customTemplates": [],
+    "settings": {
+        "appearanceTools": true,
+        "border": {
+            "radius": false
+        },
+        "color": {
+            "palette": [
+                { "name": "Navy", "slug": "navy", "color": "#02285b" },
+                { "name": "White", "slug": "white", "color": "#ffffff" }
+            ],
+            "duotone": [
+                {
+                    "name": "Brand",
+                    "slug": "brand",
+                    "colors": [
+                        "#02285b",
+                        "#ffffff"
+                    ],
+                    "meta": {
+                        "createdBy": "fixture",
+                        "tags": [
+                            "primary",
+                            "high-contrast"
+                        ]
+                    }
+                },
+                {
+                    "name": "Inverted",
+                    "slug": "inverted",
+                    "colors": [
+                        "#ffffff",
+                        "#02285b"
+                    ],
+                    "meta": {
+                        "createdBy": "fixture",
+                        "tags": []
+                    }
+                }
+            ]
+        }
+    }
+}
