@@ -1,6 +1,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,9 +13,18 @@ import (
 )
 
 func Import(r io.Reader) (*model.Database, error) {
+	// Read the entire JSON to parse it twice: once to get key order, once to decode
+	jsonBytes, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read JSON: %w", err)
+	}
+
+	// First pass: extract root-level key order by parsing tokens
+	rootPrimitiveKeys := extractRootKeyOrder(jsonBytes)
+
+	// Second pass: decode normally
 	var data interface{}
-	decoder := json.NewDecoder(r)
-	if err := decoder.Decode(&data); err != nil {
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
 		return nil, fmt.Errorf("failed to decode JSON: %w", err)
 	}
 
@@ -24,15 +34,17 @@ func Import(r io.Reader) (*model.Database, error) {
 		counter: 1,
 	}
 
-	if err := normalizer.normalize(data, "", db); err != nil {
-		return nil, err
-	}
-
-	// Handle root-level primitives if root object has primitives mixed with arrays/objects
+	// Extract root-level primitives using the preserved key order
+	var rootPrimitives map[string]interface{}
 	if rootObj, ok := data.(map[string]interface{}); ok {
 		hasRootPrimitives := false
-		rootPrimitives := make(map[string]interface{})
-		for key, val := range rootObj {
+		rootPrimitives = make(map[string]interface{})
+		// Use the preserved key order, filtering to only primitives
+		for _, key := range rootPrimitiveKeys {
+			val, exists := rootObj[key]
+			if !exists {
+				continue
+			}
 			switch val.(type) {
 			case []interface{}, map[string]interface{}:
 				// Not a primitive
@@ -42,11 +54,22 @@ func Import(r io.Reader) (*model.Database, error) {
 			}
 		}
 		if hasRootPrimitives && len(rootPrimitives) > 0 {
-			// Create a special table for root primitives (will be handled specially in export)
-			if err := normalizer.createTableFromPrimitiveObject(rootPrimitives, "_root", db); err != nil {
+			// Filter rootPrimitiveKeys to only include keys that are actually primitives
+			filteredKeys := make([]string, 0, len(rootPrimitiveKeys))
+			for _, key := range rootPrimitiveKeys {
+				if _, ok := rootPrimitives[key]; ok {
+					filteredKeys = append(filteredKeys, key)
+				}
+			}
+			// Create a special table for root primitives with preserved order
+			if err := normalizer.createTableFromPrimitiveObjectWithOrder(rootPrimitives, filteredKeys, "_root", db); err != nil {
 				return nil, err
 			}
 		}
+	}
+
+	if err := normalizer.normalize(data, "", db); err != nil {
+		return nil, err
 	}
 
 	// Convert map to slice and sort by table name for deterministic output
@@ -61,10 +84,39 @@ func Import(r io.Reader) (*model.Database, error) {
 
 	for _, name := range tableNames {
 		table := normalizer.tables[name]
-		// Sort columns by name for deterministic order
-		sort.Slice(table.Columns, func(i, j int) bool {
-			return table.Columns[i].Name < table.Columns[j].Name
-		})
+		// Sort columns by name for deterministic order, except:
+		// - _root table (preserve original order)
+		// - Tables with foreign keys (keep FK columns first)
+		if name != "_root" {
+			// Check if table has foreign keys
+			if len(table.ForeignKeys) > 0 {
+				// Separate FK columns from non-FK columns
+				fkColNames := make(map[string]bool)
+				for _, fk := range table.ForeignKeys {
+					fkColNames[fk.Name] = true
+				}
+				fkCols := make([]model.Column, 0)
+				nonFKCols := make([]model.Column, 0)
+				for _, col := range table.Columns {
+					if fkColNames[col.Name] {
+						fkCols = append(fkCols, col)
+					} else {
+						nonFKCols = append(nonFKCols, col)
+					}
+				}
+				// Sort non-FK columns, keep FK columns in their current order (should be first)
+				sort.Slice(nonFKCols, func(i, j int) bool {
+					return nonFKCols[i].Name < nonFKCols[j].Name
+				})
+				// Reconstruct columns: FK first, then sorted non-FK
+				table.Columns = append(fkCols, nonFKCols...)
+			} else {
+				// No foreign keys, sort all columns
+				sort.Slice(table.Columns, func(i, j int) bool {
+					return table.Columns[i].Name < table.Columns[j].Name
+				})
+			}
+		}
 		db.Tables = append(db.Tables, table)
 	}
 
@@ -110,7 +162,36 @@ func (n *normalizer) normalizeObject(obj map[string]interface{}, prefix string, 
 		return n.createTableFromPrimitiveObject(obj, prefix, db)
 	}
 
-	// Otherwise, process arrays and nested objects normally
+	// If object has primitives AND nested structures, create a table for primitives first
+	// then process nested structures as child tables
+	if hasPrimitives && (hasArrays || hasNestedObjects) {
+		// Extract primitives
+		primitives := make(map[string]interface{})
+		for key, val := range obj {
+			switch val.(type) {
+			case []interface{}, map[string]interface{}:
+				// Not a primitive
+			default:
+				primitives[key] = val
+			}
+		}
+		if len(primitives) > 0 {
+			// Create table for primitives - nested structures will become child tables
+			if err := n.createTableFromPrimitiveObject(primitives, prefix, db); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Process arrays and nested objects (they become child tables if parent has primitives)
+	parentTableName := prefix
+	if strings.HasSuffix(parentTableName, "_") {
+		parentTableName = strings.TrimSuffix(parentTableName, "_")
+	}
+	if parentTableName == "" {
+		parentTableName = prefix
+	}
+
 	for key, val := range obj {
 		fullKey := prefix + key
 		if fullKey == "" {
@@ -119,17 +200,91 @@ func (n *normalizer) normalizeObject(obj map[string]interface{}, prefix string, 
 
 		switch v := val.(type) {
 		case []interface{}:
-			// Array becomes a table
-			if err := n.createTableFromArray(fullKey, v, ""); err != nil {
+			// Array becomes a table (child table if parent has primitives)
+			parentName := ""
+			if hasPrimitives && (hasArrays || hasNestedObjects) {
+				parentName = parentTableName
+			}
+			if err := n.createTableFromArray(fullKey, v, parentName); err != nil {
 				return err
 			}
 		case map[string]interface{}:
-			// Recursively process nested objects
-			if err := n.normalizeObject(v, fullKey+"_", db); err != nil {
-				return err
+			// For nested objects, if parent has primitives, create as child table
+			// Otherwise, recursively process normally
+			if hasPrimitives && (hasArrays || hasNestedObjects) {
+				// Create as child table - check if it only has primitives
+				hasOnlyPrimitives := true
+				for _, nestedVal := range v {
+					switch nestedVal.(type) {
+					case []interface{}, map[string]interface{}:
+						hasOnlyPrimitives = false
+						break
+					}
+				}
+				if hasOnlyPrimitives {
+					// Create single-row child table with FK as first column
+					keys := make([]string, 0, len(v))
+					for key := range v {
+						keys = append(keys, key)
+					}
+					sort.Strings(keys)
+
+					// Create table with FK column first
+					childTableName := strings.TrimSuffix(fullKey+"_", "_")
+					fkColName := parentTableName + "_id"
+
+					// Create columns with FK first
+					columns := make([]model.Column, 0, len(keys)+1)
+					columns = append(columns, model.Column{Name: fkColName, Type: model.ColumnTypeInt})
+					for _, key := range keys {
+						if val, ok := v[key]; ok {
+							colType := inferType(val)
+							columns = append(columns, model.Column{
+								Name: key,
+								Type: colType,
+							})
+						}
+					}
+
+					// Create table
+					table := &model.Table{
+						Name:    childTableName,
+						Columns: columns,
+						Rows:    []model.Row{},
+						ForeignKeys: []model.ForeignKey{
+							{
+								Name:             fkColName,
+								ReferencedTable:  parentTableName,
+								ReferencedColumn: "id",
+							},
+						},
+					}
+
+					// Create single row with FK value first, then primitive values
+					row := make(model.Row, len(columns))
+					row[0] = model.IntValue(1) // FK value
+					for i, key := range keys {
+						if val, ok := v[key]; ok {
+							row[i+1] = jsonValueToModelValue(val)
+						}
+					}
+					table.Rows = append(table.Rows, row)
+
+					n.tables[childTableName] = table
+				} else {
+					// Has nested structures - recursively process
+					if err := n.normalizeObject(v, fullKey+"_", db); err != nil {
+						return err
+					}
+				}
+			} else {
+				// No parent primitives, process normally
+				if err := n.normalizeObject(v, fullKey+"_", db); err != nil {
+					return err
+				}
 			}
 		}
-		// Primitives are ignored here - they're only handled when object has only primitives
+		// Primitives are already handled above
 	}
 
 	return nil
@@ -459,10 +614,17 @@ func (n *normalizer) createTableFromPrimitiveObject(obj map[string]interface{}, 
 		tableName = "root"
 	}
 
-	// Check if table already exists
+	// Check if table already exists (e.g., _root was already created for root-level primitives)
 	if _, exists := n.tables[tableName]; exists {
-		// Table already exists, skip (shouldn't happen for primitive-only objects)
+		// Table already exists, skip
 		return nil
+	}
+	// Also check if _root exists and we're trying to create root (avoid duplicate)
+	if tableName == "root" {
+		if _, exists := n.tables["_root"]; exists {
+			// _root already exists, don't create root
+			return nil
+		}
 	}
 
 	// Create columns from object keys
@@ -500,6 +662,132 @@ func (n *normalizer) createTableFromPrimitiveObject(obj map[string]interface{}, 
 
 	n.tables[tableName] = table
 	return nil
+}
+
+func (n *normalizer) createTableFromPrimitiveObjectWithOrder(obj map[string]interface{}, keys []string, prefix string, db *model.Database) error {
+	tableName := prefix
+	// Strip trailing underscore if present (from nested object prefixing)
+	if strings.HasSuffix(tableName, "_") {
+		tableName = strings.TrimSuffix(tableName, "_")
+	}
+	if tableName == "" {
+		tableName = "root"
+	}
+
+	// Check if table already exists
+	if _, exists := n.tables[tableName]; exists {
+		// Table already exists, skip (shouldn't happen for primitive-only objects)
+		return nil
+	}
+
+	// Create columns from keys in the specified order
+	columns := make([]model.Column, 0, len(keys))
+	for _, key := range keys {
+		if val, ok := obj[key]; ok {
+			colType := inferType(val)
+			columns = append(columns, model.Column{
+				Name: key,
+				Type: colType,
+			})
+		}
+	}
+
+	// Create table
+	table := &model.Table{
+		Name:        tableName,
+		Columns:     columns,
+		Rows:        []model.Row{},
+		ForeignKeys: []model.ForeignKey{},
+	}
+
+	// Create single row with all primitive values in the specified order
+	row := make(model.Row, len(columns))
+	for i, key := range keys {
+		if val, ok := obj[key]; ok {
+			row[i] = jsonValueToModelValue(val)
+		}
+	}
+	table.Rows = append(table.Rows, row)
+
+	n.tables[tableName] = table
+	return nil
+}
+
+// extractRootKeyOrder parses JSON tokens to extract root-level keys in their original order
+func extractRootKeyOrder(jsonBytes []byte) []string {
+	decoder := json.NewDecoder(bytes.NewReader(jsonBytes))
+	keys := make([]string, 0)
+
+	// Skip to the first token (should be '{')
+	token, err := decoder.Token()
+	if err != nil || token != json.Delim('{') {
+		return keys
+	}
+
+	// Read key-value pairs
+	for decoder.More() {
+		// Read key
+		keyToken, err := decoder.Token()
+		if err != nil {
+			break
+		}
+		if key, ok := keyToken.(string); ok {
+			keys = append(keys, key)
+		}
+
+		// Skip the value by reading its token
+		valueToken, err := decoder.Token()
+		if err != nil {
+			break
+		}
+
+		// If value is a nested object or array, skip its contents
+		if delim, ok := valueToken.(json.Delim); ok {
+			if delim == '{' {
+				skipObject(decoder)
+			} else if delim == '[' {
+				skipArray(decoder)
+			}
+		}
+		// Primitive values are already consumed by Token()
+	}
+
+	return keys
+}
+
+func skipObject(decoder *json.Decoder) {
+	for decoder.More() {
+		decoder.Token() // skip key
+		valueToken, err := decoder.Token()
+		if err != nil {
+			break
+		}
+		if delim, ok := valueToken.(json.Delim); ok {
+			if delim == '{' {
+				skipObject(decoder)
+			} else if delim == '[' {
+				skipArray(decoder)
+			}
+		}
+	}
+	decoder.Token() // consume closing '}'
+}
+
+func skipArray(decoder *json.Decoder) {
+	for decoder.More() {
+		valueToken, err := decoder.Token()
+		if err != nil {
+			break
+		}
+		if delim, ok := valueToken.(json.Delim); ok {
+			if delim == '{' {
+				skipObject(decoder)
+			} else if delim == '[' {
+				skipArray(decoder)
+			}
+		}
+	}
+	decoder.Token() // consume closing ']'
 }
 
 func inferType(val interface{}) model.ColumnType {

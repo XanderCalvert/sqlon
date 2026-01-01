@@ -136,6 +136,20 @@ This is an experimental project. Breaking changes are expected. The current MVP 
 - ✅ Roundtrip pipeline testing
 - ✅ GitHub Actions CI/CD
 
+## Known Issues
+
+### JSON Key Order Preservation
+
+When converting JSON to SQLON and back to JSON, the key order of root-level primitive fields may not be perfectly preserved. While the system attempts to preserve the original JSON key order by parsing tokens, some fields (particularly those that appear after arrays or nested objects in the original JSON) may end up in a different position in the roundtrip output.
+
+**Example:**
+- Original: `{"$schema": "...", "version": 2, "customTemplates": [], "settings": {...}}`
+- Roundtrip: `{"$schema": "...", "customTemplates": [], "settings": {...}, "version": 2}`
+
+The first root-level primitive (`$schema`) is correctly positioned, but subsequent primitives may appear after other top-level keys. This is a known limitation and does not affect data integrity—all fields are preserved correctly, only their order may differ.
+
+**Workaround:** If key order is critical, consider restructuring your JSON to place all primitive fields before arrays and nested objects.
+
 ## Related Projects
 
 - [sqlon-vscode](https://github.com/XanderCalvert/sqlon-vscode) - VS Code syntax highlighting extension for SQLON

@@ -30,36 +30,66 @@ func Export(w io.Writer, db *model.Database) error {
 	result := make(map[string]interface{})
 	var rootPrimitives map[string]interface{}
 
-	// Process tables, skipping child tables (they'll be merged into parents)
+	// First, extract root primitives (they should appear first)
+	for _, table := range db.Tables {
+		if len(table.ForeignKeys) > 0 {
+			continue
+		}
+		if table.Name == "_root" {
+			rows := exportTableRows(table, childTables[table.Name], tableMap)
+			if len(rows) == 1 {
+				rootPrimitives = rows[0]
+			}
+			break // Found it, no need to continue
+		}
+	}
+
+	// Insert root primitives first (to preserve order - they should appear before other fields)
+	// Use column order to maintain consistent ordering
+	if rootPrimitives != nil {
+		// Find _root table to get column order
+		var rootTable *model.Table
+		for _, table := range db.Tables {
+			if table.Name == "_root" {
+				rootTable = table
+				break
+			}
+		}
+		if rootTable != nil {
+			// Insert in column order (which determines the order in rootPrimitives)
+			for _, col := range rootTable.Columns {
+				if val, ok := rootPrimitives[col.Name]; ok {
+					result[col.Name] = val
+				}
+			}
+		} else {
+			// Fallback: insert in map iteration order
+			for key, val := range rootPrimitives {
+				result[key] = val
+			}
+		}
+	}
+
+	// Then process other tables, skipping child tables (they'll be merged into parents)
 	for _, table := range db.Tables {
 		// Skip if this is a child table (has FK to another table)
 		if len(table.ForeignKeys) > 0 {
 			continue
 		}
 
-		// Handle special "_root" table - merge its fields into top level
+		// Skip _root table (already processed)
 		if table.Name == "_root" {
-			rows := exportTableRows(table, childTables[table.Name], tableMap)
-			if len(rows) == 1 {
-				rootPrimitives = rows[0]
-			}
 			continue
 		}
 
 		rows := exportTableRows(table, childTables[table.Name], tableMap)
 
-		// If table has exactly one row and no child tables, export as object instead of array
-		if len(rows) == 1 && len(childTables[table.Name]) == 0 {
+		// If table has exactly one row, export as object instead of array
+		// (even if it has child tables, the child data is merged into the single row)
+		if len(rows) == 1 {
 			result[table.Name] = rows[0]
 		} else {
 			result[table.Name] = rows
-		}
-	}
-
-	// Merge root primitives into top level
-	if rootPrimitives != nil {
-		for key, val := range rootPrimitives {
-			result[key] = val
 		}
 	}
 
@@ -93,7 +123,13 @@ func exportTableRows(table *model.Table, childTables []*model.Table, tableMap ma
 		}
 
 		// Add flat field values (parent tables don't have FK columns)
+		// Skip internal columns like _id
 		for i, colName := range colNames {
+			// Skip internal _id columns
+			if colName == "_id" {
+				continue
+			}
+
 			var val interface{}
 			if i < len(row) {
 				val = modelValueToJSONValue(row[i])
@@ -130,15 +166,24 @@ func exportTableRows(table *model.Table, childTables []*model.Table, tableMap ma
 								childRows = append(childRows, val)
 							}
 						} else {
-							// This is an array of objects
+							// This is an array of objects (or single object if only one row)
 							childRows = append(childRows, childRowObj)
 						}
 					}
 				}
 			}
 
-			// Add nested array to parent row
-			rowObj[fieldName] = childRows
+			// Add nested structure to parent row
+			// If only one child row, export as object instead of array
+			if len(childRows) == 1 {
+				if childObj, ok := childRows[0].(map[string]interface{}); ok {
+					rowObj[fieldName] = childObj
+				} else {
+					rowObj[fieldName] = childRows
+				}
+			} else {
+				rowObj[fieldName] = childRows
+			}
 		}
 
 		rows = append(rows, rowObj)
