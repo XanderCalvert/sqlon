@@ -36,3 +36,6 @@ Thumbs.db
 # Build artifacts
 *.a
 
+# GitHub Actions (while building)
+.github/workflows/
+
